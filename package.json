@@ -1,0 +1,19 @@
+{
+  "name": "collab-review",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "prisma": "^6.17.1"
+  },
+  "scripts": {
+    "db:up": "docker compose -f docker/docker-compose.yml up -d",
+    "db:down": "docker compose -f docker/docker-compose.yml down",
+    "prisma:migrate": "prisma migrate dev",
+    "seed": "ts-node prisma/seed.ts",
+    "api": "npm -w apps/api run dev",
+    "web": "npm -w apps/web run dev"
+  }
+}

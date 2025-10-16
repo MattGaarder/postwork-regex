@@ -1,0 +1,122 @@
+/* --- Base styles --- */
+:root{
+  --bg: #0b0e14;
+  --card: #121826;
+  --muted: #98a2b3;
+  --text: #e6e8ec;
+  --accent: #7c5cff;
+  --accent-2: #2dd4bf;
+  --danger: #ef4444;
+  --border: #1f2433;
+  --shadow: 0 8px 24px rgba(0,0,0,0.25);
+  --radius: 16px;
+}
+
+*{ box-sizing: border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  font: 16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji;
+  color: var(--text);
+  background: radial-gradient(1200px 800px at 10% -20%, #192135 0%, var(--bg) 40%);
+}
+
+h1,h2,h3{ line-height:1.2; margin:0 0 .6rem; }
+p{ margin: .5rem 0 1rem; }
+.muted{ color: var(--muted); }
+
+/* --- Layout --- */
+.site-header{
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 1rem 1.25rem; border-bottom:1px solid var(--border);
+  position: sticky; top: 0; backdrop-filter: blur(8px);
+  background: rgba(11,14,20,.7);
+}
+.site-header h1{ font-size:clamp(20px, 2.5vw, 28px); letter-spacing:.5px; }
+
+.header-actions{
+  display:flex; gap:.5rem; align-items:center;
+}
+#importFile{ display:none; }
+.import-label{ cursor:pointer; }
+
+.layout{
+  display:grid; grid-template-columns: 320px 1fr; gap: 1rem;
+  padding: 1rem; max-width: 1200px; margin: 0 auto;
+}
+
+.sidebar{
+  background: var(--card); border:1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: .75rem;
+}
+.search-wrap{ padding:.25rem .25rem .5rem; }
+.search-wrap input{
+  width:100%; padding:.6rem .75rem; border-radius: 10px;
+  background: #0f1523; border:1px solid var(--border); color:var(--text);
+}
+
+.entries{ list-style:none; margin:0; padding:0; max-height: calc(100vh - 220px); overflow:auto; }
+.entries li{
+  border:1px solid transparent; border-radius: 12px; padding:.6rem .65rem; margin:.25rem 0;
+  display:flex; flex-direction:column; gap:.15rem; cursor:pointer;
+}
+.entries li:hover{ background:#0f1523; border-color:#1a2030; }
+.entries .title{ font-weight:600; }
+.entries .meta{ font-size:.85rem; color:var(--muted); }
+
+.content{ display:flex; flex-direction:column; gap:1rem; }
+.card{
+  background: var(--card); border:1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 1rem;
+}
+
+.form-row{ display:flex; flex-direction:column; gap:.4rem; margin:.6rem 0; }
+input[type="text"], input[type="date"], textarea{
+  background:#0f1523; color:var(--text); border:1px solid var(--border);
+  border-radius: 10px; padding:.7rem .8rem; font:inherit;
+}
+textarea{ resize:vertical; }
+
+.actions{ display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.6rem; }
+.btn{
+  border:1px solid var(--border); background:#111728; color:var(--text);
+  padding:.55rem .8rem; border-radius: 10px; cursor:pointer;
+}
+.btn:hover{ filter:brightness(1.1); }
+.btn.primary{ background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-color:transparent; }
+.btn.danger{ background:#2a0f15; border-color:#3c121a; color:#ffb4b4; }
+.btn.subtle{ background:#0f1523; color:var(--muted); }
+
+.site-footer{ text-align:center; color:var(--muted); padding:1rem; }
+
+/* Markdown render area */
+.markdown-body{
+  line-height:1.6;
+}
+.markdown-body pre{
+  background:#0f1523; border:1px solid var(--border); padding: .75rem; border-radius: 10px;
+  overflow:auto;
+}
+.markdown-body code{
+  background:#0f1523; border:1px solid var(--border);
+  padding:.1rem .35rem; border-radius:6px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+.markdown-body h1, .markdown-body h2, .markdown-body h3{ margin-top:1rem; }
+.markdown-body ul{ padding-left: 1.2rem; }
+.markdown-body a{ color: #8ab4ff; text-decoration: none; }
+.markdown-body a:hover{ text-decoration: underline; }
+
+/* Toast */
+#toast{
+  position: fixed; right: 1rem; bottom: 1rem; background:#0f1523; color:var(--text);
+  border:1px solid var(--border); border-radius: 12px; padding: .6rem .8rem; box-shadow: var(--shadow);
+  opacity:0; transform: translateY(8px); transition: all .25s ease; pointer-events:none;
+}
+#toast.show{ opacity:1; transform: translateY(0); }
+
+/* Responsive */
+@media (max-width: 900px){
+  .layout{ grid-template-columns: 1fr; }
+  .entries{ max-height: 240px; }
+}
