@@ -1,3 +1,4 @@
+// apps/api/src/projects.ts
 // A) Register → Projects page → List projects
 // 	1.	User fills form and clicks Register (frontend).
 // 	2.	Frontend POST /auth/register with { email, password, name }.
@@ -72,3 +73,12 @@ projectsRouter.delete('/:id', async (req: AuthReq, res) => {
   await prisma.project.delete({ where: { id } });
   res.status(204).send();
 });
+
+projectsRouter.get('/:id/submissions', async (req: AuthReq, res) => {
+  const id = Number(req.params.id)
+  const subs = await prisma.submission.findMany({
+    where: { projectId: id },
+    orderBy: { createdAt: 'desc' },
+  })
+  res.json(subs)
+})

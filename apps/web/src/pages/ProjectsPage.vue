@@ -46,7 +46,8 @@
     <q-card
       v-for="p in projects"
       :key="p.id"
-      class="q-mb-sm"
+      class="q-mb-sm cursor-pointer"
+      @click="openProject(p.id)"
     >
       <q-card-section class="row project-row">
         <div class="project">
@@ -82,6 +83,10 @@ const form = ref({
   name: '',
   description: ''
 });
+
+function openProject(id) {
+  router.push(`/projects/${id}`)
+}
 
 async function fetchProjects () {
   errorMsg.value = ''

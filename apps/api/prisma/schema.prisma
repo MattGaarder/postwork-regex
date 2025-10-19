@@ -105,8 +105,8 @@ model Comment {
   author        User        @relation("UserComments", fields: [authorId], references: [id])
   authorId      Int
   body          String
-  lineStart     Int
-  lineEnd       Int
+  line          Int
+         
 
   // Self-relation (threading). Use a named relation so both sides pair up.
   parentId      Int?

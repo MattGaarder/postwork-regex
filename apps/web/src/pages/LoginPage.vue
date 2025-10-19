@@ -12,6 +12,9 @@
 
 <script setup >
   import { ref, onMounted } from 'vue';
+  // api is the Axios client from web/lib/http.ts.
+	// baseURL: import.meta.env.VITE_API_URL turns '/projects' into something like http://localhost:3000/projects.
+	// the request interceptor runs before the request is sent:
   import { api } from '../lib/http';
   import { useAuth } from '../stores/auth';
   import { useRouter } from 'vue-router';

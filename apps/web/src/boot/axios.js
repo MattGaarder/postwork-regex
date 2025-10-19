@@ -1,3 +1,5 @@
+// web/src/boot/axios
+
 import { defineBoot } from '#q-app/wrappers'
 import axios from 'axios'
 
