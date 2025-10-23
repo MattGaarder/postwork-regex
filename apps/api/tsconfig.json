@@ -14,16 +14,17 @@
     // "lib": ["esnext"],
     // "types": ["node"],
     // and npm install -D @types/node
+    "resolvePackageJsonExports": true,
+    "allowJs": true,
 
     // Other Outputs
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
-
     // Stricter Typechecking Options
     "noUncheckedIndexedAccess": true,
     // "exactOptionalPropertyTypes": true,
-
+    "moduleResolution": "node16",
     // Style Options
     // "noImplicitReturns": true,
     // "noImplicitOverride": true,
@@ -41,7 +42,8 @@
     // "moduleDetection": "force",
     "skipLibCheck": true,
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "src", "src/types", "src/types/**/*.d.ts"],
   "exclude": ["node_modules", "dist", "prisma/**"]
 }

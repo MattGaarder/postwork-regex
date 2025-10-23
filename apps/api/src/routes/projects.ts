@@ -49,18 +49,20 @@ projectsRouter.get('/', async (req: AuthReq, res) => {
 
 const CreateProject = z.object({
   name: z.string().min(1),
-  description: z.string().optional()
+  description: z.string().optional(),
+  language: z.enum(['JAVASCRIPT', 'PYTHON', 'JAVA']),
 });
 
 projectsRouter.post('/', async (req: AuthReq, res) => {
   const parsed = CreateProject.safeParse(req.body);
   if (!parsed.success) return res.status(400).json(parsed.error.flatten());
-  const { name, description } = parsed.data;
+  const { name, description, language } = parsed.data;
   const project = await prisma.project.create({
     data: {
       ownerId: req.user!.id,
       name,
       description: description ?? null, // turn undefined into null
+      language
     }
   });
   res.status(201).json(project);
@@ -74,11 +76,12 @@ projectsRouter.delete('/:id', async (req: AuthReq, res) => {
   res.status(204).send();
 });
 
-projectsRouter.get('/:id/submissions', async (req: AuthReq, res) => {
+projectsRouter.get('/:id/v', async (req: AuthReq, res) => {
   const id = Number(req.params.id)
-  const subs = await prisma.submission.findMany({
+  const subs = await prisma.version.findMany({
     where: { projectId: id },
     orderBy: { createdAt: 'desc' },
   })
   res.json(subs)
 })
+

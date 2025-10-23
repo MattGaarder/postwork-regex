@@ -19,8 +19,18 @@
         <div class="col-12 col-md-4">
           <q-input v-model="form.name" label="Project name" dense />
         </div>
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-4">
           <q-input v-model="form.description" type="textarea" autogrow label="Description (optional)" dense />
+        </div>
+        <div class="col-12 col-md-4">
+          <q-select
+            v-model="form.language"
+            :options="languageOptions"
+            label="Language"
+            dense
+            emit-value
+            map-options
+          />
         </div>
         <div class="col-12 col-md-2 flex items-end">
           <q-btn
@@ -55,7 +65,7 @@
             <div class="text-caption">{{ p.description ?? '—' }}</div>
         </div>
         <q-card-actions align="right">
-            <q-btn flat color="negative" label="Delete" :loading="deletingId === p.id" @click="deleteProject(p.id)" />
+            <q-btn flat color="negative" label="Delete" :loading="deletingId === p.id" @click.stop="deleteProject(p.id)" />
         </q-card-actions>
       </q-card-section>
 
@@ -79,13 +89,39 @@ const isCreating = ref(false);
 const deletingId = ref(null);
 const errorMsg = ref('');
 
+const languageOptions = [
+  { label: 'JavaScript', value: 'JAVASCRIPT' },
+  { label: 'Python', value: 'PYTHON' },
+  { label: 'Java', value: 'JAVA' }
+];
+
 const form = ref({
   name: '',
-  description: ''
+  description: '',
+  language: 'JAVASCRIPT',
 });
 
-function openProject(id) {
-  router.push(`/projects/${id}`)
+async function openProject(id) {
+  console.log('[ProjectsPage] openProject ->', { id });
+
+  try {
+    // load versions newest-first (your backend already orders desc)
+    const { data: versions } = await api.get(`/projects/${id}/v`);
+
+    if (Array.isArray(versions) && versions.length > 0) {
+      // go to the newest version
+      const latest = versions[0]; // because orderBy createdAt:'desc'
+      return router.push(`/projects/${id}/v/${latest.id}`);
+    }
+
+    // no versions yet → create the first one
+    const { data: created } = await api.post(`/projects/${id}/v`, { content: '' });
+    return router.push(`/projects/${id}/v/${created.id}`);
+  } catch (err) {
+    console.error('[ProjectsPage] openProject error', err);
+    // Fallback to the project page (your guard there can resolve/redirect too)
+    return router.push(`/projects/${id}`);
+  }
 }
 
 async function fetchProjects () {
@@ -124,7 +160,8 @@ async function createProject () {
     const payload = {
       name: form.value.name,
       // your API wants string | null (not undefined)
-      description: form.value.description ? form.value.description : null
+      description: form.value.description ? form.value.description : null,
+      language: form.value.language
     }
     const { data } = await api.post('/projects', payload)
     projects.value.unshift(data) // optimistic add

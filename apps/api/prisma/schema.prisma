@@ -8,8 +8,25 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"           // Using Postgres; can also be mysql, sqlite, etc.
-  url      = env("DATABASE_URL")    // Read the connection string from .env
+  provider = "postgresql" // Using Postgres; can also be mysql, sqlite, etc.
+  url      = env("DATABASE_URL") // Read the connection string from .env
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ENUM: MemberRole // Lanuage
+// - A fixed set of allowed string-like values. Safer than a free-text "role".
+// - Generates a TS enum-like type in @prisma/client for autocompletion.
+// ──────────────────────────────────────────────────────────────────────────────
+enum MemberRole {
+  OWNER
+  MAINTAINER
+  REVIEWER
+}
+
+enum Language {
+  JAVASCRIPT
+  PYTHON
+  JAVA
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -21,33 +38,39 @@ datasource db {
 //   Prisma can pair them correctly.
 // ──────────────────────────────────────────────────────────────────────────────
 model User {
-  id             Int              @id @default(autoincrement())
-  email          String           @unique
-  passwordHash   String
-  name           String?          // Optional = NULL allowed
-  createdAt      DateTime         @default(now())
+  id           Int             @id @default(autoincrement())
+  email        String          @unique
+  passwordHash String
+  name         String? // Optional = NULL allowed
+  createdAt    DateTime        @default(now())
   // Relations to other models (each with its own name)
   // Inverse relation fields (arrays) — no FK columns here, just virtual mappings
-  projects       Project[]        @relation("OwnedProjects")      
-  memberships    ProjectMember[]  @relation("ProjectMemberships")
-  submissions    Submission[]     @relation("AuthoredSubmissions")
-  comments       Comment[]        @relation("UserComments")
-  reactions      Reaction[]       @relation("UserReactions")
-  userStat       UserStat?
+  projects     Project[]       @relation("OwnedProjects") // User → Project (owner)
+  memberships  ProjectMember[] @relation("ProjectMemberships") // User ↔ ProjectMember
+  versions     Version[]       @relation("VersionAuthors") // User → Version (author)
+  comments     Comment[]       @relation("UserComments") // User → Comment (author)
+  reactions    Reaction[]      @relation("UserReactions") // User → Reaction
+  userStat     UserStat?
+
+  @@index([email])
 }
 
 model Project {
-  id          Int              @id @default(autoincrement())
-  ownerId     Int              // FK column -> User.id
+  id          Int             @id @default(autoincrement())
+  ownerId     Int // FK column -> User.id
   // Relation to the owner. Because User has multiple relations, we NAME this pair.
-  owner       User             @relation("OwnedProjects", fields: [ownerId], references: [id])
+  owner       User            @relation("OwnedProjects", fields: [ownerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   name        String
   description String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt @default(now())
-  // Inverse sides (arrays) — Prisma figures out FK via the other models
+  language    Language
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @default(now()) @updatedAt
+  // RELATIONS - inverse sides (arrays) — Prisma figures out FK via the other models
   members     ProjectMember[]
-  submissions Submission[]
+  versions    Version[]
+
+  @@index([ownerId])
+  @@index([name])
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -56,41 +79,38 @@ model Project {
 // - We keep a composite unique to prevent duplicates (same user in same project).
 // ──────────────────────────────────────────────────────────────────────────────
 model ProjectMember {
-  id        Int      @id @default(autoincrement())
-  project   Project  @relation(fields: [projectId], references: [id]) // FK -> Project.id
+  id        Int        @id @default(autoincrement())
   projectId Int
-  user      User     @relation("ProjectMemberships", fields: [userId], references: [id]) // FK -> User.id
   userId    Int
   role      MemberRole @default(REVIEWER)
-  @@unique([projectId, userId]) // Prevent duplicate memberships
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user    User    @relation("ProjectMemberships", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([projectId, userId]) // no duplicate memberships
+  @@index([userId])
+  @@index([projectId])
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// ENUM: MemberRole
-// - A fixed set of allowed string-like values. Safer than a free-text "role".
-// - Generates a TS enum-like type in @prisma/client for autocompletion.
-// ──────────────────────────────────────────────────────────────────────────────
-enum MemberRole {
-  OWNER
-  MAINTAINER
-  REVIEWER
+model Version {
+  id        Int     @id @default(autoincrement())
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  authorId Int?
+  author   User? @relation("VersionAuthors", fields: [authorId], references: [id], onDelete: SetNull)
+
+  language String
+  content  String // the current text shown in Monaco
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  comments Comment[] @relation("VersionComments")
+
+  @@index([projectId])
+  @@index([authorId])
 }
-
-model Submission {
-  id          Int        @id @default(autoincrement())
-  project     Project    @relation(fields: [projectId], references: [id])
-  projectId   Int
-  title       String
-  language    String     // Could become an enum later (JAVASCRIPT|PYTHON|JAVA)
-  code        String     // Store the raw source code (text)
-  author      User       @relation("AuthoredSubmissions", fields: [authorId], references: [id])
-  authorId    Int
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-
-  comments    Comment[]   // Inverse: all comments for this submission
-}
-
 
 // Optional but recommended: make parent a real self-relation
 // ──────────────────────────────────────────────────────────────────────────────
@@ -99,39 +119,45 @@ model Submission {
 // - `parentId` is optional; root comments have parentId = NULL.
 // ──────────────────────────────────────────────────────────────────────────────
 model Comment {
-  id            Int         @id @default(autoincrement())
-  submission    Submission  @relation(fields: [submissionId], references: [id])
-  submissionId  Int
-  author        User        @relation("UserComments", fields: [authorId], references: [id])
-  authorId      Int
-  body          String
-  line          Int
-         
+  id        Int     @id @default(autoincrement())
+  versionId Int
+  version   Version @relation("VersionComments", fields: [versionId], references: [id], onDelete: Cascade)
 
-  // Self-relation (threading). Use a named relation so both sides pair up.
-  parentId      Int?
-  parent        Comment?    @relation("CommentThread", fields: [parentId], references: [id])
-  children      Comment[]   @relation("CommentThread")
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  reactions     Reaction[]
-  pointsAwarded Int         @default(0)
+  line Int
+
+  authorId Int
+  author   User   @relation("UserComments", fields: [authorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  body     String
+
+  parentId Int?
+  parent   Comment?  @relation("CommentThread", fields: [parentId], references: [id], onDelete: Cascade)
+  children Comment[] @relation("CommentThread")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([versionId])
+  @@index([authorId])
+  @@index([parentId])
+  @@index([line])
 }
-
 
 // ──────────────────────────────────────────────────────────────────────────────
 // MODEL: Reaction
 // - Simple “upvote/like” entity. Unique constraint prevents double-voting.
 // ──────────────────────────────────────────────────────────────────────────────
 model Reaction {
-  id        Int      @id @default(autoincrement())
-  comment   Comment  @relation(fields: [commentId], references: [id])
+  id        Int    @id @default(autoincrement())
   commentId Int
-  user      User     @relation("UserReactions", fields: [userId], references: [id])
   userId    Int
-  kind      String   // e.g. "upvote" — could be an enum later
+  kind      String // e.g. "upvote"
 
-  @@unique([commentId, userId, kind]) // One reaction per user per kind per comment
+  // comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user User @relation("UserReactions", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([commentId, userId, kind])
+  @@index([userId])
+  @@index([commentId])
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -140,9 +166,11 @@ model Reaction {
 // - You update these in your API whenever a comment/reaction happens.
 // ──────────────────────────────────────────────────────────────────────────────
 model UserStat {
-  userId        Int    @id
-  user          User   @relation(fields: [userId], references: [id])
-  points        Int    @default(0)
-  commentsCount Int    @default(0)
-  badges        String? // JSON or CSV (JSON recommended if you need structure)
+  userId        Int     @id
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  points        Int     @default(0)
+  commentsCount Int     @default(0)
+  badges        String?
+
+  // could add computed indexes later if needed
 }
