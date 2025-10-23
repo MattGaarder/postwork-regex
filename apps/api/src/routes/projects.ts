@@ -59,7 +59,7 @@ projectsRouter.post('/', async (req: AuthReq, res) => {
   const { name, description, language } = parsed.data;
   const project = await prisma.project.create({
     data: {
-      ownerId: req.user!.id,
+      owner: { connect: { id: req.user!.id }},
       name,
       description: description ?? null, // turn undefined into null
       language
