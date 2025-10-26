@@ -115,7 +115,7 @@ async function openProject(id) {
     }
 
     // no versions yet → create the first one
-    const { data: created } = await api.post(`/projects/${id}/v`, { content: '' });
+    const { data: created } = await api.post(`/projects/${id}/v`, { code: '' });
     return router.push(`/projects/${id}/v/${created.id}`);
   } catch (err) {
     console.error('[ProjectsPage] openProject error', err);

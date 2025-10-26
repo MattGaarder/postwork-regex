@@ -9,7 +9,7 @@
     // See also https://aka.ms/tsconfig/module
     "module": "nodenext",
     "target": "esnext",
-    "types": ["node"],
+    "types": ["node",  "vite/client"],
     // For nodejs:
     // "lib": ["esnext"],
     // "types": ["node"],
@@ -44,6 +44,6 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["src/**/*", "src", "src/types", "src/types/**/*.d.ts"],
+  "include": ["src/**/*", "src", "src/types", "src/types/**/*.d.ts", "env.d.ts"],
   "exclude": ["node_modules", "dist", "prisma/**"]
 }

@@ -1,73 +1,84 @@
+// apps/web/eslint.config.js (Flat config)
 import js from '@eslint/js'
 import globals from 'globals'
 import pluginVue from 'eslint-plugin-vue'
+import vueParser from 'vue-eslint-parser'
+import tsPlugin from '@typescript-eslint/eslint-plugin'
+import tsParser from '@typescript-eslint/parser'
 import pluginQuasar from '@quasar/app-vite/eslint'
 import prettierSkipFormatting from '@vue/eslint-config-prettier/skip-formatting'
 
 export default [
-  {
-    /**
-     * Ignore the following files.
-     * Please note that pluginQuasar.configs.recommended() already ignores
-     * the "node_modules" folder for you (and all other Quasar project
-     * relevant folders and files).
-     *
-     * ESLint requires "ignores" key to be the only one in this object
-     */
-    // ignores: []
-  },
+  // ignore patterns (flat config style)
+  { ignores: ['dist', 'node_modules'] },
 
+  // Quasar’s recommended base (already sets a bunch of good defaults)
   ...pluginQuasar.configs.recommended(),
+
+  // JS baseline
   js.configs.recommended,
 
-  /**
-   * https://eslint.vuejs.org
-   *
-   * pluginVue.configs.base
-   *   -> Settings and rules to enable correct ESLint parsing.
-   * pluginVue.configs[ 'flat/essential']
-   *   -> base, plus rules to prevent errors or unintended behavior.
-   * pluginVue.configs["flat/strongly-recommended"]
-   *   -> Above, plus rules to considerably improve code readability and/or dev experience.
-   * pluginVue.configs["flat/recommended"]
-   *   -> Above, plus rules to enforce subjective community defaults to ensure consistency.
-   */
-  ...pluginVue.configs['flat/essential'],
-
+  // Vue SFCs — parse <template> and <script lang="ts">
   {
+    files: ['**/*.vue'],
     languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
-
+      parser: vueParser,                  // parse .vue SFC
+      parserOptions: {
+        parser: tsParser,                 // parse <script lang="ts">
+        ecmaVersion: 2022,
+        sourceType: 'module',
+        extraFileExtensions: ['.vue'],
+      },
       globals: {
         ...globals.browser,
-        ...globals.node, // SSR, Electron, config files
-        process: 'readonly', // process.env.*
-        ga: 'readonly', // Google Analytics
-        cordova: 'readonly',
-        Capacitor: 'readonly',
-        chrome: 'readonly', // BEX related
-        browser: 'readonly', // BEX related
+        ...globals.node,
       },
     },
-
-    // add your custom rules here
+    plugins: {
+      vue: pluginVue,
+    },
     rules: {
-      'prefer-promise-reject-errors': 'off',
-
-      // allow debugger during development only
-      'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off',
+      // start from Vue’s recommended rules
+      ...pluginVue.configs['flat/recommended'].rules,
     },
   },
 
+  // TypeScript files
   {
-    files: ['src-pwa/custom-service-worker.js'],
+    files: ['**/*.{ts,tsx}'],
     languageOptions: {
+      parser: tsParser,
+      ecmaVersion: 2022,
+      sourceType: 'module',
       globals: {
-        ...globals.serviceworker,
+        ...globals.browser,
+        ...globals.node,
       },
     },
+    plugins: {
+      '@typescript-eslint': tsPlugin,
+    },
+    rules: {
+      ...tsPlugin.configs.recommended.rules,
+    },
   },
 
+  // Plain JS files
+  {
+    files: ['**/*.{js,cjs,mjs}'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
+    },
+    rules: {
+      // your custom JS rules here
+    },
+  },
+
+  // Keep Prettier’s “skip formatting” last
   prettierSkipFormatting,
 ]

@@ -16,7 +16,7 @@ const enumToMonaco = (lang?: string) => {
 
 export function useVersion(projectId: number, versionId: number) {
   const router = useRouter();
-  const content   = ref('');
+  const code   = ref('');
   
   const language  = ref('plaintext'); // monaco language id
   const path      = ref<string | null>(null);
@@ -35,7 +35,7 @@ export function useVersion(projectId: number, versionId: number) {
     try {
       const { data } = await api.get(`/projects/${projectId}/v/${versionId}`);
       console.log('[useVersion.refresh] response:', data);
-      content.value   = data.content;
+      code.value   = data.code;
       language.value  = enumToMonaco(data.language);   // Prisma enum → Monaco id
       path.value      = data.path ?? null;
       createdAt.value = data.createdAt ?? null;
@@ -45,17 +45,18 @@ export function useVersion(projectId: number, versionId: number) {
     } finally {
       isLoading.value = false;
     }
+
   }
 
   async function save(newContent?: string) {
     errorMsg.value = '';
     isSaving.value = true;
-    const payload = { content: newContent ?? content.value };
+    const payload = { code: newContent ?? code.value };
     console.log('[useVersion.save] POST /projects/%s/v payload=', projectId, payload);
     try {
       const { data } = await api.post(`/projects/${projectId}/v`, payload);
       console.log('[useVersion.save] created new version id=', data.id, 'response=', data);
-      content.value = data.content;
+      code.value = data.code;
       language.value  = enumToMonaco(data.language);
       updatedAt.value = data.updatedAt ?? updatedAt.value;
       createdAt.value = data.createdAt ?? createdAt.value;
@@ -68,6 +69,6 @@ export function useVersion(projectId: number, versionId: number) {
     }
   }
 
-  return { content, language, path, createdAt, updatedAt, isLoading, isSaving, errorMsg, refresh, save }
+  return { code, language, path, createdAt, updatedAt, isLoading, isSaving, errorMsg, refresh, save }
 }
 

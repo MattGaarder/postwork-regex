@@ -52,6 +52,11 @@ model User {
   reactions    Reaction[]      @relation("UserReactions") // User → Reaction
   userStat     UserStat?
 
+
+  // @@index([...]) defines a database index on one or more columns - are performance helpers for databases.
+  // Without an index, when you run a query like: SELECT * FROM "Comment" WHERE "versionId" = 3;
+  // the database might have to scan every single row in the table to find the matches — this is called a full table scan.
+  // With an index on versionId, the database can look up those rows much faster, because it maintains a sorted list of pointers to rows that share that value (think of it like the index at the back of a book).
   @@index([email])
 }
 
@@ -101,7 +106,7 @@ model Version {
   author   User? @relation("VersionAuthors", fields: [authorId], references: [id], onDelete: SetNull)
 
   language String
-  content  String // the current text shown in Monaco
+  code  String // the current text shown in Monaco
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -119,27 +124,33 @@ model Version {
 // - `parentId` is optional; root comments have parentId = NULL.
 // ──────────────────────────────────────────────────────────────────────────────
 model Comment {
-  id        Int     @id @default(autoincrement())
-  versionId Int
-  version   Version @relation("VersionComments", fields: [versionId], references: [id], onDelete: Cascade)
+  id           Int        @id @default(autoincrement())
+  versionId    Int
+  version      Version    @relation("VersionComments", fields:[versionId], references: [id], onDelete: Cascade)
 
-  line Int
 
-  authorId Int
-  author   User   @relation("UserComments", fields: [authorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  body     String
+  lineStart    Int?
+  lineEnd      Int?
+  content      String     
 
-  parentId Int?
-  parent   Comment?  @relation("CommentThread", fields: [parentId], references: [id], onDelete: Cascade)
-  children Comment[] @relation("CommentThread")
+  authorId     Int
+  author       User       @relation("UserComments", fields: [authorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  parentId     Int?
+  parent       Comment?   @relation("CommentThread", fields: [parentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  children     Comment[]  @relation("CommentThread")
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now())
 
   @@index([versionId])
   @@index([authorId])
   @@index([parentId])
-  @@index([line])
+
+  @@index([lineStart])
+  @@index([lineEnd])
+  // A composite index that helps “find comments covering line X”
+  @@index([versionId, lineStart, lineEnd])
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

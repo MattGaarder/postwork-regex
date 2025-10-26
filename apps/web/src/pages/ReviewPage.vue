@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<!-- <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import * as monaco from 'monaco-editor';
@@ -105,4 +105,4 @@ async function submitComment() {
       </q-card-actions>
     </q-card>
   </q-dialog>
-</template>
+</template> -->

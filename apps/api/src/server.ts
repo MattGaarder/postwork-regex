@@ -5,6 +5,11 @@ import cors from 'cors';
 import helmet from 'helmet';
 import pino from 'pino-http';
 
+import { assertDbConnection } from './services/prisma';
+(async () => {
+  await assertDbConnection();
+})();
+
 // ⬇️ This is Node's built-in HTTP module (no extra install needed)
 // import http from 'http';
 // import { WebSocketServer } from 'ws'
@@ -16,9 +21,9 @@ const app = express();
 import { prisma } from './services/prisma'; // connect to Prisma
 import { authRouter } from './routes/auth';
 import { projectsRouter } from './routes/projects';
-// import { submissionsRouter } from './routes/submissions';
+
 import { versionsRouter } from './routes/versions';
-// import { commentsRouter } from './routes/comments';
+import { commentsRouter } from './routes/comments';
 // import { reactionsRouter } from './routes/reactions';
 
 
@@ -30,9 +35,9 @@ app.use(pino());
 
 app.use('/auth', authRouter);
 app.use('/projects', projectsRouter);
-// app.use('/submissions', submissionsRouter);
+
 app.use('/projects', versionsRouter);
-// app.use('/comments', commentsRouter);
+app.use('/projects/:projectId', commentsRouter);
 // app.use('/reactions', reactionsRouter);
 
 // Global error handler...

@@ -19,7 +19,7 @@ async function assertProjectMember(projectId: number, userId: number) {
 
 // zod for POST body
 const CreateVersion = z.object({
-  content: z.string().min(0),
+  code: z.string().min(0),
   language: z.enum(['JAVASCRIPT', 'PYTHON', 'JAVA']).optional(),
 })
 
@@ -113,14 +113,14 @@ versionsRouter.post('/:projectId/v', async (req: AuthReq, res) => {
   if (!project) return res.status(404).json({ error: 'Project not found' })
 
   const language = parsed.data.language ?? project.language
-  const content = parsed.data.content
+  const code = parsed.data.code
 
   const version = await prisma.version.create({
     data: {
       projectId,
       authorId: req.user!.id,
       language,
-      content,
+      code,
     },
   })
   console.log('Created version id=', version.id);

@@ -1,5 +1,6 @@
+name: postwork-collab-test
 services:
-  db:
+  db-test:
     image: postgres:16
     restart: unless-stopped
     environment:
@@ -7,10 +8,10 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_DB: collab
     ports:
-      - "5432:5432"
+      - "5433:5432"
   # Left side: pgdata → the name of a Docker volume (a persistent storage resource).
 	# Right side: /var/lib/postgresql/data → the directory inside the container where PostgreSQL writes all its database files.
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata_test:/var/lib/postgresql/data
 volumes:
-  pgdata: {}
+  pgdata_test: {}

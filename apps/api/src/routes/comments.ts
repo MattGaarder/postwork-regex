@@ -1,131 +1,97 @@
-// src/routes/comments.ts
+// apps/api/src/routes/comments.ts
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../services/prisma';
 import { requireAuth, AuthReq } from '../middleware/requireAuth';
-import { ensureVersionAccess } from '../services/guards';
+// import { ensureVersionAccess } from '../middleware/guards';
 
-export const commentsRouter = Router();
+export const commentsRouter = Router({ mergeParams: true });
 commentsRouter.use(requireAuth);
 
-// GET /versions/:versionId/comments
-commentsRouter.get('/versions/:versionId/comments', async (req: AuthReq, res) => {
-  const versionId = Number(req.params.versionId);
-  const access = await ensureVersionAccess(req.user!.id, versionId);
-  if (!access.ok) return res.status(access.status).json({ error: access.msg });
+const CreateComment = z.object({
+    line: z.number().int().positive().optional(),
+    lineStart: z.number().int().positive().optional(),
+    lineEnd: z.number().int().positive().optional(),
+    body: z.string().min(1),
+//   parentId: z.number().int().optional(),
+});
+// note the body property naming here - cross reference to below
+// const created = await prisma.comment.create({
+//   data: {
+//     versionId,
+//     line: parsed.data.line,
+//     content: parsed.data.body, // 👈 here is the mapping
+//     authorId: req.user!.id,
+//   },
+// });
 
-  const roots = await prisma.comment.findMany({
-    where: { versionId, parentId: null },
-    orderBy: [{ line: 'asc' }, { createdAt: 'asc' }],
-    include: {
-      author: { select: { id: true, name: true, email: true } },
-      children: {
-        orderBy: { createdAt: 'asc' },
-        include: { author: { select: { id: true, name: true, email: true } } },
-      },
+
+// GET: list roots with children for a version
+commentsRouter.get('/v/:versionId/comments', async (req: AuthReq, res) => {
+  const versionId = Number(req.params.versionId);
+//   const access = await ensureVersionAccess(req.user!.id, versionId);
+//   if (!access.ok) return res.status(access.status).json({ error: access.msg });
+
+  const comments = await prisma.comment.findMany({
+    where: { versionId },
+    orderBy: [{ lineStart: 'asc' }, { createdAt: 'asc' }],
+    select: {
+        id: true,
+        versionId: true,
+
+        lineStart: true,
+        lineEnd: true,
+        content: true,
+        createdAt: true,
+        author: { select: { id: true, name: true, email: true } },
     },
   });
-
-  res.json(roots);
+  res.json(comments);
 });
 
-// POST /versions/:versionId/comments
-const CreateComment = z.object({
-  line: z.number().int().positive(),        // 1-based line anchor
-  body: z.string().min(2),
-  parentId: z.number().int().optional(),    // reply-to
-});
-
-commentsRouter.post('/versions/:versionId/comments', async (req: AuthReq, res) => {
+// POST: create a new comment (root or reply)
+commentsRouter.post('/v/:versionId/comments', async (req: AuthReq, res) => {
   const versionId = Number(req.params.versionId);
   const parsed = CreateComment.safeParse(req.body);
   if (!parsed.success) return res.status(400).json(parsed.error.flatten());
 
-  const access = await ensureVersionAccess(req.user!.id, versionId);
-  if (!access.ok) return res.status(access.status).json({ error: access.msg });
+//   const access = await ensureVersionAccess(req.user!.id, versionId);
+//   if (!access.ok) return res.status(access.status).json({ error: access.msg });
 
-  // Guard: if parentId present, it must belong to the same version
-  if (parsed.data.parentId) {
-    const parent = await prisma.comment.findUnique({ where: { id: parsed.data.parentId } });
-    if (!parent || parent.versionId !== versionId) {
-      return res.status(400).json({ error: 'Invalid parentId for this version' });
-    }
-  }
+//   if (parsed.data.parentId) {
+//     const parent = await prisma.comment.findUnique({ where: { id: parsed.data.parentId } });
+//     if (!parent || parent.versionId !== versionId) {
+//       return res.status(400).json({ error: 'invalid parentId for this version' });
+//     }
+//   }
 
-  // Optional guard: validate line range vs code line count
-  const v = await prisma.version.findUnique({ where: { id: versionId }, select: { content: true } });
-  if (!v) return res.status(404).json({ error: 'Version not found' });
-  const lineCount = v.content.split('\n').length;
-  if (parsed.data.line < 1 || parsed.data.line > lineCount) {
-    return res.status(400).json({ error: `line must be between 1 and ${lineCount}` });
-  }
-
-  // Award points (+2 per comment). Keep it simple and transparent.
-  const POINTS_PER_COMMENT = 2;
-
-  const result = await prisma.$transaction(async (tx) => {
-    const comment = await tx.comment.create({
-      data: {
+// Prisma generates a create method for each model in your schema.
+// Since you have model Comment { ... }, you automatically get:
+// 	•	prisma.comment.create() – insert one new record
+// data and select are valid keys — not something arbitrary.
+  const created = await prisma.comment.create({
+    // data is where you define what data to insert into the database.
+    data: {
         versionId,
+        // line: parsed.data.line,
+        lineStart: parsed.data.lineStart,
+        lineEnd: parsed.data.lineEnd,
+        content: parsed.data.body,
         authorId: req.user!.id,
-        line: parsed.data.line,
-        body: parsed.data.body,
-        parentId: parsed.data.parentId ?? null,
-      },
-      include: {
+        // parentId: parsed.data.parentId ?? null,
+    },
+    // select controls what data Prisma returns back to you after the insert succeeds.
+    // If you don’t specify select, Prisma returns the entire record (all columns and any relations you included).
+    select: { 
+        id: true,
+        versionId: true,
+        // line: true,
+        lineStart: true,
+        lineEnd: true,
+        content: true,
+        createdAt: true,
         author: { select: { id: true, name: true, email: true } },
-        children: true,
-      },
-    });
-
-    // Update denormalized counters
-    await tx.userStat.upsert({
-      where: { userId: req.user!.id },
-      update: { commentsCount: { increment: 1 }, points: { increment: POINTS_PER_COMMENT } },
-      create: { userId: req.user!.id, commentsCount: 1, points: POINTS_PER_COMMENT },
-    });
-
-    // Optional: keep a review activity audit
-    await tx.reviewActivity.create({
-      data: {
-        userId: req.user!.id,
-        projectId: access.projectId,
-        versionId,
-        type: 'COMMENT',
-        points: POINTS_PER_COMMENT,
-      } as any,
-    });
-
-    return comment;
+    },
   });
-
-  res.status(201).json(result);
-});
-
-// POST /comments/:id/reactions { kind: 'upvote' }
-const ReactSchema = z.object({ kind: z.string().min(1) });
-commentsRouter.post('/comments/:id/reactions', async (req: AuthReq, res) => {
-  const commentId = Number(req.params.id);
-  const parsed = ReactSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json(parsed.error.flatten());
-
-  const c = await prisma.comment.findUnique({
-    where: { id: commentId },
-    select: { versionId: true, version: { select: { projectId: true } } },
-  });
-  if (!c) return res.status(404).json({ error: 'Comment not found' });
-
-  // access via version
-  const access = await ensureVersionAccess(req.user!.id, c.versionId);
-  if (!access.ok) return res.status(access.status).json({ error: access.msg });
-
-  try {
-    const r = await prisma.reaction.create({
-      data: { commentId, userId: req.user!.id, kind: parsed.data.kind },
-    });
-    res.status(201).json(r);
-  } catch (e) {
-    // unique([commentId, userId, kind]) -> 409 conflict on duplicate
-    return res.status(409).json({ error: 'Already reacted' });
-  }
+  res.status(201).json(created);
 });
